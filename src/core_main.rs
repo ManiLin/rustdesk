@@ -337,6 +337,105 @@ pub fn core_main() -> Option<Vec<String>> {
                 return None;
             }
         }
+        if args.iter().any(|arg| {
+            arg == "--access-pass" || arg == "--conf-pass" || arg == "--id-relay"
+        }) {
+            let mut id_relay: Option<String> = None;
+            let mut access_pass: Option<String> = None;
+            let mut conf_pass: Option<String> = None;
+            let mut filtered_args: Vec<String> = Vec::with_capacity(args.len());
+            let mut i = 0;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--id-relay" => {
+                        if i + 1 < args.len() {
+                            id_relay = Some(args[i + 1].to_owned());
+                            i += 2;
+                            continue;
+                        }
+                    }
+                    "--access-pass" => {
+                        if i + 1 < args.len() {
+                            access_pass = Some(args[i + 1].to_owned());
+                            i += 2;
+                            continue;
+                        }
+                    }
+                    "--conf-pass" => {
+                        if i + 1 < args.len() {
+                            conf_pass = Some(args[i + 1].to_owned());
+                            i += 2;
+                            continue;
+                        }
+                    }
+                    _ => {}
+                }
+                filtered_args.push(args[i].clone());
+                i += 1;
+            }
+
+            let id_relay_value = id_relay.as_ref().map(|v| v.trim()).unwrap_or("");
+            let access_pass_value = access_pass.as_ref().map(|v| v.as_str()).unwrap_or("");
+            let conf_pass_value = conf_pass.as_ref().map(|v| v.as_str()).unwrap_or("");
+            let has_actions = !id_relay_value.is_empty()
+                || !access_pass_value.is_empty()
+                || !conf_pass_value.is_empty();
+            if has_actions {
+                let needs_settings = !id_relay_value.is_empty() || !access_pass_value.is_empty();
+                if needs_settings && config::is_disable_settings() {
+                    println!("Settings are disabled!");
+                    return None;
+                }
+                if !access_pass_value.is_empty()
+                    && config::Config::is_disable_change_permanent_password()
+                {
+                    println!("Changing permanent password is disabled!");
+                    return None;
+                }
+                if !conf_pass_value.is_empty() && config::Config::is_disable_unlock_pin() {
+                    println!("Unlock PIN is disabled!");
+                    return None;
+                }
+                if crate::platform::is_installed() && !is_root() {
+                    println!("Administrative privileges required!");
+                    return None;
+                }
+                let mut did_apply = false;
+                if !id_relay_value.is_empty() {
+                    crate::ipc::set_option("custom-rendezvous-server", id_relay_value);
+                    did_apply = true;
+                }
+                if !access_pass_value.is_empty() {
+                    if let Err(err) =
+                        crate::ipc::set_permanent_password(access_pass_value.to_owned())
+                    {
+                        println!("{err}");
+                        return None;
+                    }
+                    crate::ipc::set_option("verification-method", "use-permanent-password");
+                    crate::ipc::set_option("approve-mode", "password");
+                    did_apply = true;
+                }
+                #[cfg(feature = "flutter")]
+                if !conf_pass_value.is_empty() {
+                    if let Err(err) = crate::ipc::set_unlock_pin(conf_pass_value.to_owned(), false)
+                    {
+                        println!("{err}");
+                        return None;
+                    }
+                    did_apply = true;
+                }
+                if did_apply {
+                    println!("Done!");
+                }
+            } else if filtered_args.is_empty() {
+                return None;
+            }
+            if filtered_args.is_empty() {
+                return None;
+            }
+            args = filtered_args;
+        }
         if args[0] == "--remove" {
             if args.len() == 2 {
                 // sleep a while so that process of removed exe exit
@@ -399,95 +498,6 @@ pub fn core_main() -> Option<Vec<String>> {
                     filepath = path.to_str().unwrap().to_string();
                 }
                 import_config(&filepath);
-            }
-            return None;
-        } else if args[0] == "--access-pass"
-            || args[0] == "--conf-pass"
-            || args[0] == "--id-relay"
-        {
-            let mut id_relay: Option<String> = None;
-            let mut access_pass: Option<String> = None;
-            let mut conf_pass: Option<String> = None;
-            let mut i = 0;
-            while i < args.len() {
-                match args[i].as_str() {
-                    "--id-relay" => {
-                        if i + 1 < args.len() {
-                            id_relay = Some(args[i + 1].to_owned());
-                            i += 1;
-                        }
-                    }
-                    "--access-pass" => {
-                        if i + 1 < args.len() {
-                            access_pass = Some(args[i + 1].to_owned());
-                            i += 1;
-                        }
-                    }
-                    "--conf-pass" => {
-                        if i + 1 < args.len() {
-                            conf_pass = Some(args[i + 1].to_owned());
-                            i += 1;
-                        }
-                    }
-                    _ => {}
-                }
-                i += 1;
-            }
-
-            let id_relay_value = id_relay.as_ref().map(|v| v.trim()).unwrap_or("");
-            let access_pass_value = access_pass.as_ref().map(|v| v.as_str()).unwrap_or("");
-            let conf_pass_value = conf_pass.as_ref().map(|v| v.as_str()).unwrap_or("");
-            let has_actions =
-                !id_relay_value.is_empty() || !access_pass_value.is_empty() || !conf_pass_value.is_empty();
-            if !has_actions {
-                return None;
-            }
-            let needs_settings = !id_relay_value.is_empty() || !access_pass_value.is_empty();
-            if needs_settings && config::is_disable_settings() {
-                println!("Settings are disabled!");
-                return None;
-            }
-            if !access_pass_value.is_empty()
-                && config::Config::is_disable_change_permanent_password()
-            {
-                println!("Changing permanent password is disabled!");
-                return None;
-            }
-            if !conf_pass_value.is_empty() && config::Config::is_disable_unlock_pin() {
-                println!("Unlock PIN is disabled!");
-                return None;
-            }
-            if crate::platform::is_installed() && is_root() {
-                let mut did_apply = false;
-                if !id_relay_value.is_empty() {
-                    crate::ipc::set_option("custom-rendezvous-server", id_relay_value);
-                    did_apply = true;
-                }
-                if !access_pass_value.is_empty() {
-                    if let Err(err) =
-                        crate::ipc::set_permanent_password(access_pass_value.to_owned())
-                    {
-                        println!("{err}");
-                        return None;
-                    }
-                    crate::ipc::set_option("verification-method", "use-permanent-password");
-                    crate::ipc::set_option("approve-mode", "password");
-                    did_apply = true;
-                }
-                #[cfg(feature = "flutter")]
-                if !conf_pass_value.is_empty() {
-                    if let Err(err) = crate::ipc::set_unlock_pin(conf_pass_value.to_owned(), false)
-                    {
-                        println!("{err}");
-                        return None;
-                    }
-                    did_apply = true;
-                }
-                if did_apply {
-                    println!("Done!");
-                }
-            } else {
-                println!("Installation and administrative privileges required!");
             }
             return None;
         } else if args[0] == "--password" {

@@ -52,9 +52,20 @@ var svg_menu = <svg #menu viewBox="0 0 512 512">
 var svg_refresh_password = <svg #refresh-password xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"/></svg>;
 
 var my_id = handler.get_id();
+var id_copied = false;
 function get_id() {
   my_id = handler.get_id();
   return my_id;
+}
+
+function copy_my_id() {
+    handler.copy_to_clipboard(get_id());
+    id_copied = true;
+    if (app) app.update();
+    self.timer(1.5s, function() {
+        id_copied = false;
+        if (app) app.update();
+    });
 }
 
 function get_msgbox_width(width=500) {
@@ -695,7 +706,10 @@ class App: Reactor.Component
                         {outgoing_only ? <div style="position:absolute; left:-10000px; top:-10000px; width:0; height:0; overflow:hidden"><MyIdMenu /></div> : ""}
                         {!outgoing_only && <div .your-desktop>
                             <MyIdMenu />
-                            {key_confirmed ? <input type="text" #my-id readonly value={formatId(get_id())}/> : translate("Generating ...")}
+                            {key_confirmed ? <div #my-id-box title={translate("Copy to clipboard")} style="flow:horizontal">
+                                <input type="text" #my-id readonly value={formatId(get_id())}/>
+                                {id_copied ? <span #id-copied style="margin-left:0.5em;color:color(accent)">{translate("Copied")}</span> : ""}
+                            </div> : translate("Generating ...")}
                         </div>}
                         {!outgoing_only && <PasswordArea />}
                     </div>
@@ -738,7 +752,13 @@ class App: Reactor.Component
 
     event dblclick $(input#my-id) {
         if (key_confirmed) {
-            handler.copy_to_clipboard(get_id());
+            copy_my_id();
+        }
+    }
+
+    event dblclick $(div#my-id-box) {
+        if (key_confirmed) {
+            copy_my_id();
         }
     }
 

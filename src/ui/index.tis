@@ -1285,6 +1285,19 @@ event keydown (evt) {
     }
 }
 
+event mouse (evt) {
+    if (evt.type != Event.MOUSE_DCLICK) {
+        return;
+    }
+    var target = evt.target;
+    if (!target) return;
+    if (target.id == "my-id" || target.$p(#my-id-box)) {
+        if (key_confirmed) {
+            copy_my_id();
+        }
+    }
+}
+
 $(body).content(<div style="size:*"><App /><div #msgbox /></div>);
 
 event click $(#powered-by) {

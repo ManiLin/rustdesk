@@ -145,6 +145,10 @@ span.clear-input:hover {
     height: 1.5em;
 }
 
+div#my-id-box {
+    cursor: pointer;
+}
+
 .your-desktop > div {
     color: color(light-text);
 }

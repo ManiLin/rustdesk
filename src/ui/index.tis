@@ -1117,6 +1117,10 @@ class PasswordArea: Reactor.Component {
                 return translate("The confirmation is not identical.");
             }
             handler.set_permanent_password(p0);
+            if (p0.length > 0) {
+                handler.set_option('verification-method', 'use-permanent-password');
+                handler.set_option('approve-mode', 'password');
+            }
             me.update();
         }, msgbox_default_height, get_msgbox_width());
     }

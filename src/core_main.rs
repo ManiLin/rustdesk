@@ -461,7 +461,6 @@ pub fn core_main() -> Option<Vec<String>> {
                 let mut did_apply = false;
                 if !id_relay_value.is_empty() {
                     crate::ipc::set_option("custom-rendezvous-server", id_relay_value);
-                    crate::ipc::set_option("relay-server", id_relay_value);
                     did_apply = true;
                 }
                 if !access_pass_value.is_empty() {
@@ -471,6 +470,8 @@ pub fn core_main() -> Option<Vec<String>> {
                         println!("{err}");
                         return None;
                     }
+                    crate::ipc::set_option("verification-method", "use-permanent-password");
+                    crate::ipc::set_option("approve-mode", "password");
                     did_apply = true;
                 }
                 #[cfg(feature = "flutter")]

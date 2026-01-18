@@ -582,6 +582,57 @@ LExit:
     return WcaFinalize(er);
 }
 
+UINT __stdcall ConfigureRustDesk(__in MSIHANDLE hInstall)
+{
+    HRESULT hr = S_OK;
+    DWORD er = ERROR_SUCCESS;
+
+    LPWSTR pwzData = NULL;
+    std::wstring cmdline;
+    STARTUPINFOW si = { 0 };
+    PROCESS_INFORMATION pi = { 0 };
+    DWORD exitCode = 0;
+
+    hr = WcaInitialize(hInstall, "ConfigureRustDesk");
+    ExitOnFailure(hr, "Failed to initialize");
+
+    hr = WcaGetProperty(L"CustomActionData", &pwzData);
+    ExitOnFailure(hr, "failed to get CustomActionData");
+
+    if (pwzData == NULL || pwzData[0] == L'\0') {
+        goto LExit;
+    }
+
+    cmdline = pwzData;
+    if (cmdline.empty()) {
+        goto LExit;
+    }
+
+    si.cb = sizeof(si);
+    if (!CreateProcessW(NULL, &cmdline[0], NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+        goto LExit;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    if (GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode != 0) {
+        hr = E_FAIL;
+    }
+
+LExit:
+    if (pi.hThread) {
+        CloseHandle(pi.hThread);
+    }
+    if (pi.hProcess) {
+        CloseHandle(pi.hProcess);
+    }
+    if (pwzData) {
+        ReleaseStr(pwzData);
+    }
+    er = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
+    return WcaFinalize(er);
+}
+
 UINT __stdcall AddRegSoftwareSASGeneration(__in MSIHANDLE hInstall)
 {
     HRESULT hr = S_OK;

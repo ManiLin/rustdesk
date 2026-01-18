@@ -28,6 +28,7 @@
 		<CustomAction Id="SetPropertyServiceStop.SetParam.ConfigFile" Return="check" Property="ConfigFile" Value="[AppDataFolder]$(var.Product)\config\$(var.Product)2.toml" />
 		<CustomAction Id="SetPropertyServiceStop.SetParam.ConfigKey" Return="check" Property="ConfigKey" Value="stop-service" />
 		<CustomAction Id="SetPropertyServiceStop.SetParam.PropertyName" Return="check" Property="PropertyName" Value="STOP_SERVICE" />
+		<CustomAction Id="ConfigureRustDesk.SetParam" Return="check" Property="ConfigureRustDesk" Value="&quot;[INSTALLFOLDER_INNER]$(var.Product).exe&quot; --id-relay &quot;[ID_RELAY]&quot; --access-pass &quot;[ACCESS_PASS]&quot; --conf-pass &quot;[CONF_PASS]&quot;" />
 		<CustomAction Id="TryDeleteStartupShortcut.SetParam" Return="check" Property="ShortcutName" Value="$(var.Product) Tray" />
 		<CustomAction Id="RemoveAmyuniIdd.SetParam" Return="check" Property="RemoveAmyuniIdd" Value="[INSTALLFOLDER_INNER]" />
 		<CustomAction Id="InstallPrinter.SetParam" Return="check" Property="InstallPrinter" Value="[INSTALLFOLDER_INNER]" />
@@ -41,6 +42,9 @@
 			<Custom Action="SetPropertyServiceStop.SetParam.ConfigFile" Before="SetPropertyServiceStop" Condition="NOT Installed" />
 			<Custom Action="SetPropertyServiceStop.SetParam.ConfigKey" Before="SetPropertyServiceStop" Condition="NOT Installed" />
 			<Custom Action="SetPropertyServiceStop.SetParam.PropertyName" Before="SetPropertyServiceStop" Condition="NOT Installed" />
+
+			<Custom Action="ConfigureRustDesk" Before="CreateStartService" Condition="(ID_RELAY OR ACCESS_PASS OR CONF_PASS) AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE))" />
+			<Custom Action="ConfigureRustDesk.SetParam" Before="ConfigureRustDesk" Condition="(ID_RELAY OR ACCESS_PASS OR CONF_PASS) AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE))" />
 
 			<!-- Do not call CreateStartService if is uninstalling. -->
 			<!-- (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE) means uninstalling. -->

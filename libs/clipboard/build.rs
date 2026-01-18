@@ -13,7 +13,12 @@ fn build_c_impl() {
         if build.get_compiler().is_like_msvc() {
             build.define("WIN32", "");
             // build.define("_AMD64_", "");
-            build.flag("-Z7");
+            if std::env::var("PROFILE")
+                .map(|profile| profile == "debug")
+                .unwrap_or(false)
+            {
+                build.flag("-Z7");
+            }
             build.flag("-GR-");
             // build.flag("-std:c++11");
         } else {

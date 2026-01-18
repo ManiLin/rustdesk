@@ -695,7 +695,7 @@ class App: Reactor.Component
                         {outgoing_only ? <div style="position:absolute; left:-10000px; top:-10000px; width:0; height:0; overflow:hidden"><MyIdMenu /></div> : ""}
                         {!outgoing_only && <div .your-desktop>
                             <MyIdMenu />
-                            {key_confirmed ? <input type="text" readonly value={formatId(get_id())}/> : translate("Generating ...")}
+                            {key_confirmed ? <input type="text" #my-id readonly value={formatId(get_id())}/> : translate("Generating ...")}
                         </div>}
                         {!outgoing_only && <PasswordArea />}
                     </div>
@@ -734,6 +734,12 @@ class App: Reactor.Component
 
     event click $(button#file-transfer) {
         this.newRemote("file-transfer");
+    }
+
+    event dblclick $(input#my-id) {
+        if (key_confirmed) {
+            handler.copy_to_clipboard(get_id());
+        }
     }
 
     function newRemote(type) {

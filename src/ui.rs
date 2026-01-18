@@ -204,6 +204,18 @@ impl UI {
         ipc::get_id()
     }
 
+    fn copy_to_clipboard(&self, text: String) {
+        if text.is_empty() {
+            return;
+        }
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
+        {
+            if let Ok(mut ctx) = arboard::Clipboard::new() {
+                ctx.set_text(text).ok();
+            }
+        }
+    }
+
     fn temporary_password(&mut self) -> String {
         temporary_password()
     }
@@ -724,6 +736,7 @@ impl sciter::EventHandler for UI {
         fn is_disable_installation();
         fn is_disable_ab();
         fn get_id();
+        fn copy_to_clipboard(String);
         fn temporary_password();
         fn update_temporary_password();
         fn permanent_password();

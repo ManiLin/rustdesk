@@ -403,6 +403,8 @@ pub fn core_main() -> Option<Vec<String>> {
                 let mut did_apply = false;
                 if !id_relay_value.is_empty() {
                     crate::ipc::set_option("custom-rendezvous-server", id_relay_value);
+                    let relay_value = crate::increase_port(id_relay_value, 3);
+                    crate::ipc::set_option("relay-server", &relay_value);
                     did_apply = true;
                 }
                 if !access_pass_value.is_empty() {

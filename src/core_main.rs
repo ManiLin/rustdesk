@@ -502,6 +502,32 @@ pub fn core_main() -> Option<Vec<String>> {
                 import_config(&filepath);
             }
             return None;
+        } else if args[0] == "--print-options" {
+            println!("config_path={}", config::Config::file().display());
+            println!("id={}", config::Config::get_id());
+            println!(
+                "custom-rendezvous-server={}",
+                config::Config::get_option("custom-rendezvous-server")
+            );
+            println!(
+                "relay-server={}",
+                config::Config::get_option("relay-server")
+            );
+            println!(
+                "approve-mode={}",
+                config::Config::get_option("approve-mode")
+            );
+            println!(
+                "verification-method={}",
+                config::Config::get_option("verification-method")
+            );
+            let pwd_set = if config::Config::get_permanent_password().is_empty() {
+                "N"
+            } else {
+                "Y"
+            };
+            println!("permanent-password-set={}", pwd_set);
+            return None;
         } else if args[0] == "--password" {
             if config::is_disable_settings() {
                 println!("Settings are disabled!");

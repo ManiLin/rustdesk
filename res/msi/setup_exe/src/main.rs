@@ -9,10 +9,16 @@ fn main() {
     // MSI payload is injected by build.rs into OUT_DIR.
     const MSI_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rustdesk.msi"));
 
+    if !is_elevated() {
+        eprintln!("Administrator privileges are required. Re-run this installer from an elevated console (Run as administrator).");
+        std::process::exit(740); // ERROR_ELEVATION_REQUIRED
+    }
+
     let mut silent = false;
     let mut id_relay: Option<String> = None;
     let mut access_pass: Option<String> = None;
     let mut conf_pass: Option<String> = None;
+    let mut keep_msi = false;
 
     let mut args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--help" || a == "-h" || a == "/?") {
@@ -25,6 +31,9 @@ fn main() {
         match args[i].as_str() {
             "--silent" | "--quiet" | "/S" | "/silent" | "/verysilent" | "/qn" => {
                 silent = true;
+            }
+            "--keep-msi" => {
+                keep_msi = true;
             }
             "--id-relay" => {
                 if i + 1 < args.len() {
@@ -62,7 +71,15 @@ fn main() {
         }
     };
 
-    let exit_code = match run_msiexec(&msi_path, silent, &id_relay, &access_pass, &conf_pass) {
+    let log_path = make_temp_path("rustdesk-setup-msi", "log");
+    let exit_code = match run_msiexec(
+        &msi_path,
+        &log_path,
+        silent,
+        &id_relay,
+        &access_pass,
+        &conf_pass,
+    ) {
         Ok(code) => code,
         Err(e) => {
             eprintln!("{e}");
@@ -70,12 +87,20 @@ fn main() {
         }
     };
 
-    // Best effort cleanup of temp MSI.
-    let _ = std::fs::remove_file(&msi_path);
+    // Best effort cleanup of temp MSI (keep on demand for debugging).
+    if !keep_msi {
+        let _ = std::fs::remove_file(&msi_path);
+    } else {
+        eprintln!("MSI kept at: {}", msi_path.display());
+    }
 
     if exit_code != 0 {
         eprintln!("msiexec failed with exit code {exit_code}");
+        eprintln!("MSI log: {}", log_path.display());
         std::process::exit(exit_code);
+    } else {
+        // Cleanup log on success (keep clean for end users).
+        let _ = std::fs::remove_file(&log_path);
     }
 
     if silent {
@@ -102,7 +127,7 @@ fn print_usage() {
         "RustDesk setup (service-only)\\n\\
 \\n\\
 Usage:\\n\\
-  rustdesk-setup.exe [--silent] [--id-relay host:port] [--access-pass pass] [--conf-pass pin]\\n\\
+  rustdesk-setup.exe [--silent] [--id-relay host:port] [--access-pass pass] [--conf-pass pin] [--keep-msi]\\n\\
 \\n\\
 Defaults:\\n\\
   --access-pass Statusk371037\\n\\
@@ -116,13 +141,7 @@ Silent mode:\\n\\
 #[cfg(windows)]
 fn write_payload_to_temp(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
     use std::io::Write;
-    let mut path = std::env::temp_dir();
-    let pid = std::process::id();
-    let ts = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    path.push(format!("rustdesk-setup-{pid}-{ts}.msi"));
+    let path = make_temp_path("rustdesk-setup", "msi");
     let mut f = std::fs::File::create(&path)?;
     f.write_all(bytes)?;
     f.flush()?;
@@ -130,16 +149,33 @@ fn write_payload_to_temp(bytes: &[u8]) -> std::io::Result<std::path::PathBuf> {
 }
 
 #[cfg(windows)]
-fn msi_kv(key: &str, value: &str) -> String {
-    // MSI property quoting: PROPERTY="value with spaces".
+fn make_temp_path(prefix: &str, ext: &str) -> std::path::PathBuf {
+    let mut path = std::env::temp_dir();
+    let pid = std::process::id();
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    path.push(format!("{prefix}-{pid}-{ts}.{ext}"));
+    path
+}
+
+#[cfg(windows)]
+fn msi_prop(key: &str, value: &str) -> String {
+    // MSI property quoting: PROPERTY=value or PROPERTY="value with spaces".
     // Escape quotes by doubling them.
-    let v = value.replace('"', "\"\"");
-    format!(r#"{key}="{v}""#)
+    if value.chars().any(|c| c.is_whitespace()) || value.contains('"') {
+        let v = value.replace('"', "\"\"");
+        format!("{key}=\"{v}\"")
+    } else {
+        format!("{key}={value}")
+    }
 }
 
 #[cfg(windows)]
 fn run_msiexec(
     msi_path: &std::path::Path,
+    log_path: &std::path::Path,
     silent: bool,
     id_relay: &str,
     access_pass: &str,
@@ -154,12 +190,13 @@ fn run_msiexec(
     }
     cmd.arg("/norestart");
     cmd.arg("REBOOT=ReallySuppress");
+    cmd.arg("/l*v").arg(log_path);
 
     // Apply settings (defaults exist in MSI too, but we pass explicitly).
-    cmd.arg(msi_kv("ID_RELAY", id_relay));
-    cmd.arg(msi_kv("ACCESS_PASS", access_pass));
+    cmd.arg(msi_prop("ID_RELAY", id_relay));
+    cmd.arg(msi_prop("ACCESS_PASS", access_pass));
     if !conf_pass.is_empty() {
-        cmd.arg(msi_kv("CONF_PASS", conf_pass));
+        cmd.arg(msi_prop("CONF_PASS", conf_pass));
     }
 
     // Service-only/minimal footprint.
@@ -172,6 +209,52 @@ fn run_msiexec(
 
     let status = cmd.status().map_err(|e| format!("Failed to start msiexec: {e}"))?;
     Ok(status.code().unwrap_or(1))
+}
+
+#[cfg(windows)]
+fn is_elevated() -> bool {
+    // TokenElevation is supported on Vista+; good enough for our installer target.
+    type HANDLE = *mut core::ffi::c_void;
+    type BOOL = i32;
+    type DWORD = u32;
+    const TOKEN_QUERY: DWORD = 0x0008;
+    const TokenElevation: DWORD = 20;
+
+    #[repr(C)]
+    struct TOKEN_ELEVATION {
+        token_is_elevated: DWORD,
+    }
+
+    extern "system" {
+        fn GetCurrentProcess() -> HANDLE;
+        fn OpenProcessToken(process: HANDLE, desired_access: DWORD, token_handle: *mut HANDLE) -> BOOL;
+        fn GetTokenInformation(
+            token_handle: HANDLE,
+            token_information_class: DWORD,
+            token_information: *mut core::ffi::c_void,
+            token_information_length: DWORD,
+            return_length: *mut DWORD,
+        ) -> BOOL;
+        fn CloseHandle(handle: HANDLE) -> BOOL;
+    }
+
+    unsafe {
+        let mut token: HANDLE = core::ptr::null_mut();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token as *mut HANDLE) == 0 {
+            return false;
+        }
+        let mut elevation = TOKEN_ELEVATION { token_is_elevated: 0 };
+        let mut ret_len: DWORD = 0;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            &mut elevation as *mut _ as *mut core::ffi::c_void,
+            core::mem::size_of::<TOKEN_ELEVATION>() as DWORD,
+            &mut ret_len as *mut DWORD,
+        ) != 0;
+        let _ = CloseHandle(token);
+        ok && elevation.token_is_elevated != 0
+    }
 }
 
 #[cfg(windows)]

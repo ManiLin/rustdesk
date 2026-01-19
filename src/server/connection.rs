@@ -573,9 +573,9 @@ impl Connection {
                         }
                         ipc::Data::CmErr(e) => {
                             if e != "expected" {
-                                // cm closed before connection
-                                conn.on_close(&format!("connection manager error: {}", e), false).await;
-                                break;
+                                // Connection manager may be unavailable in headless/service mode.
+                                // Do not drop the remote session just because CM failed.
+                                log::warn!("connection manager error (ignored): {}", e);
                             }
                         }
                         ipc::Data::ChatMessage{text} => {

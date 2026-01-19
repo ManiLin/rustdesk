@@ -2250,6 +2250,7 @@ impl Connection {
                     .await;
                 return false;
             } else if (password::approve_mode() == ApproveMode::Click
+                && lr.password.is_empty()
                 && !(crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon()))
                 || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()

@@ -7,6 +7,7 @@ use crate::platform::breakdown_callback;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use hbb_common::platform::register_breakdown_handler;
 use hbb_common::{config, log};
+use std::net::ToSocketAddrs;
 #[cfg(windows)]
 use tauri_winrt_notification::{Duration, Sound, Toast};
 
@@ -402,8 +403,12 @@ pub fn core_main() -> Option<Vec<String>> {
                 }
                 let mut did_apply = false;
                 if !id_relay_value.is_empty() {
-                    crate::ipc::set_option("custom-rendezvous-server", id_relay_value);
-                    let relay_value = crate::increase_port(id_relay_value, 3);
+                    let id_relay_resolved =
+                        resolve_ipv4_hostport(id_relay_value).unwrap_or_else(|| {
+                            id_relay_value.to_owned()
+                        });
+                    crate::ipc::set_option("custom-rendezvous-server", &id_relay_resolved);
+                    let relay_value = crate::increase_port(&id_relay_resolved, 3);
                     crate::ipc::set_option("relay-server", &relay_value);
                     did_apply = true;
                 }
@@ -416,6 +421,9 @@ pub fn core_main() -> Option<Vec<String>> {
                     }
                     crate::ipc::set_option("verification-method", "use-permanent-password");
                     crate::ipc::set_option("approve-mode", "password");
+                    // Ensure remote clipboard and file transfer are enabled by default.
+                    crate::ipc::set_option("enable-clipboard", "Y");
+                    crate::ipc::set_option("enable-file-transfer", "Y");
                     did_apply = true;
                 }
                 #[cfg(feature = "flutter")]
@@ -973,6 +981,29 @@ fn is_root() -> bool {
     }
     #[allow(unreachable_code)]
     crate::platform::is_root()
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+fn resolve_ipv4_hostport(hostport: &str) -> Option<String> {
+    if hostport.starts_with('[') {
+        // IPv6 literal like [::1]:10201
+        return None;
+    }
+    let mut parts = hostport.rsplitn(2, ':');
+    let port_str = parts.next()?;
+    let host = parts.next()?;
+    let port: u16 = port_str.parse().ok()?;
+    let mut addrs = (host, port).to_socket_addrs().ok()?;
+    let mut first = None;
+    for addr in addrs.by_ref() {
+        if first.is_none() {
+            first = Some(addr);
+        }
+        if addr.is_ipv4() {
+            return Some(format!("{}:{}", addr.ip(), port));
+        }
+    }
+    first.map(|addr| format!("{}:{}", addr.ip(), port))
 }
 
 /// Check if the executable is a Quick Support version.

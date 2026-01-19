@@ -225,8 +225,14 @@ fn is_elevated() -> bool {
         token_is_elevated: DWORD,
     }
 
+    #[link(name = "kernel32")]
     extern "system" {
         fn GetCurrentProcess() -> HANDLE;
+        fn CloseHandle(handle: HANDLE) -> BOOL;
+    }
+
+    #[link(name = "advapi32")]
+    extern "system" {
         fn OpenProcessToken(process: HANDLE, desired_access: DWORD, token_handle: *mut HANDLE) -> BOOL;
         fn GetTokenInformation(
             token_handle: HANDLE,
@@ -235,7 +241,6 @@ fn is_elevated() -> bool {
             token_information_length: DWORD,
             return_length: *mut DWORD,
         ) -> BOOL;
-        fn CloseHandle(handle: HANDLE) -> BOOL;
     }
 
     unsafe {

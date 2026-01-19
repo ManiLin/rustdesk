@@ -16,7 +16,7 @@
 		<CustomAction Id="TryDeleteStartupShortcut" DllEntry="TryDeleteStartupShortcut" Impersonate="yes" Execute="immediate" Return="ignore" BinaryRef="Custom_Actions_Dll"/>
 		<CustomAction Id="SetPropertyServiceStop" DllEntry="SetPropertyFromConfig" Impersonate="yes" Execute="immediate" Return="ignore" BinaryRef="Custom_Actions_Dll"/>
 		<CustomAction Id="ConfigureRustDesk" DllEntry="ConfigureRustDesk" Impersonate="no" Execute="deferred" Return="check" BinaryRef="Custom_Actions_Dll"/>
-		<!-- Reuse ConfigureRustDesk runner to execute RustDesk.exe --export-id in silent mode -->
+		<!-- Reuse ConfigureRustDesk runner to execute RustDesk.exe export-id in silent mode -->
 		<CustomAction Id="ExportRustDeskId" DllEntry="ConfigureRustDesk" Impersonate="no" Execute="deferred" Return="ignore" BinaryRef="Custom_Actions_Dll"/>
 		<CustomAction Id="AddRegSoftwareSASGeneration" DllEntry="AddRegSoftwareSASGeneration" Impersonate="no" Execute="deferred" Return="ignore" BinaryRef="Custom_Actions_Dll"/>
 		<CustomAction Id="RemoveAmyuniIdd" DllEntry="RemoveAmyuniIdd" Impersonate="no" Execute="deferred" Return="ignore" BinaryRef="Custom_Actions_Dll"/>

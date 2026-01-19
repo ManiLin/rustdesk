@@ -525,6 +525,27 @@ permanent-password-set={}",
             );
             my_println!("{}", output);
             return None;
+        } else if args[0] == "--export-id" {
+            // Export the current ID into a file.
+            // Used by silent installers to print the ID after installation.
+            if args.len() == 2 {
+                let out_path = std::path::Path::new(&args[1]);
+                // Wait a little for the service/server to generate/register the ID.
+                let mut id = config::Config::get_id();
+                let timeout_ms: u64 = 30_000;
+                let step_ms: u64 = 250;
+                let mut waited_ms: u64 = 0;
+                while id.is_empty() && waited_ms < timeout_ms {
+                    std::thread::sleep(std::time::Duration::from_millis(step_ms));
+                    waited_ms += step_ms;
+                    id = config::Config::get_id();
+                }
+                let content = format!("{id}\n");
+                if let Err(err) = std::fs::write(out_path, content) {
+                    log::error!("Failed to export id to {}: {}", out_path.display(), err);
+                }
+            }
+            return None;
         } else if args[0] == "--password" {
             if config::is_disable_settings() {
                 println!("Settings are disabled!");

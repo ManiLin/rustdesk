@@ -88,10 +88,16 @@ def make_parser():
         default="PURSLANE",
         help="The app manufacturer.",
     )
+    parser.add_argument(
+        "--service-only",
+        action="store_true",
+        default=False,
+        help="Generate a minimal MSI for service-only installs (exclude UI assets and extra files).",
+    )
     return parser
 
 
-def read_lines_and_start_index(file_path, tag_start, tag_end):
+def read_lines_and_tag_indexes(file_path, tag_start, tag_end):
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     index_start = -1
@@ -104,14 +110,18 @@ def read_lines_and_start_index(file_path, tag_start, tag_end):
 
     if index_start == -1:
         print(f'Error: start tag "{tag_start}" not found')
-        return None, None
+        return None, None, None
     if index_end == -1:
         print(f'Error: end tag "{tag_end}" not found')
-        return None, None
-    return lines, index_start
+        return None, None, None
+    return lines, index_start, index_end
 
 
-def insert_components_between_tags(lines, index_start, app_name, dist_dir):
+def insert_components_between_tags(lines, index_start, app_name, dist_dir, service_only=False):
+    if service_only:
+        # Service-only installer: we only ship the main executable (handled separately as App.exe).
+        # All other files are UI assets and are excluded to keep installer size minimal.
+        return True
     indent = g_indent_unit * 3
     path = Path(dist_dir)
     idx = 1
@@ -139,13 +149,13 @@ def insert_components_between_tags(lines, index_start, app_name, dist_dir):
     return True
 
 
-def gen_auto_component(app_name, dist_dir):
+def gen_auto_component(app_name, dist_dir, service_only=False):
     return gen_content_between_tags(
         "Package/Components/RustDesk.wxs",
         "<!--$AutoComonentStart$-->",
         "<!--$AutoComponentEnd$-->",
         lambda lines, index_start: insert_components_between_tags(
-            lines, index_start, app_name, dist_dir
+            lines, index_start, app_name, dist_dir, service_only
         ),
     )
 
@@ -427,9 +437,14 @@ def gen_conn_type(args):
 
 def gen_content_between_tags(filename, tag_start, tag_end, func):
     target_file = Path(sys.argv[0]).parent.joinpath(filename)
-    lines, index_start = read_lines_and_start_index(target_file, tag_start, tag_end)
-    if lines is None:
+    lines, index_start, index_end = read_lines_and_tag_indexes(target_file, tag_start, tag_end)
+    if lines is None or index_start is None or index_end is None:
         return False
+
+    # Clear any previously generated content between the tags (idempotent runs).
+    # Keep the tag lines themselves.
+    if index_end > index_start + 1:
+        del lines[index_start + 1 : index_end]
 
     func(lines, index_start)
 
@@ -548,7 +563,7 @@ if __name__ == "__main__":
     if not gen_conn_type(args):
         sys.exit(-1)
 
-    if not gen_auto_component(app_name, dist_dir):
+    if not gen_auto_component(app_name, dist_dir, args.service_only):
         sys.exit(-1)
 
     if not gen_custom_dialog_bitmaps():

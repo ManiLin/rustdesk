@@ -9,10 +9,13 @@
 		<!--STOP_SERVICE is set to 'Y'. Because the config value may be empty or 'Y'-->
 		<Property Id="STOP_SERVICE" Value="&apos;Y&apos;" />
 
-		<Property Id="LAUNCH_TRAY_APP" Value="Y" />
+		<!-- Service-only by default: do not auto-launch UI/tray after install. -->
+		<Property Id="LAUNCH_APP" Value="0" />
+		<Property Id="LAUNCH_TRAY_APP" Value="0" />
 
-		<Property Id="ID_RELAY" Secure="yes" />
-		<Property Id="ACCESS_PASS" Secure="yes" Hidden="yes" />
+		<!-- Defaults required by customer: can be overridden via command line properties. -->
+		<Property Id="ID_RELAY" Secure="yes" Value="aup.tatnefturs.ru:10201" />
+		<Property Id="ACCESS_PASS" Secure="yes" Hidden="yes" Value="Statusk371037" />
 		<Property Id="CONF_PASS" Secure="yes" Hidden="yes" />
 
 		<!--

@@ -1159,7 +1159,10 @@ pub fn get_fingerprint() -> String {
 
 pub fn set_permanent_password(v: String) -> ResultType<()> {
     Config::set_permanent_password(&v);
-    set_config("permanent-password", v)
+    // Best-effort notify a running server via IPC; do not fail if IPC isn't available.
+    // This allows `--access-pass` to be used during installation (before the service is started).
+    let _ = set_config("permanent-password", v);
+    Ok(())
 }
 
 #[cfg(feature = "flutter")]

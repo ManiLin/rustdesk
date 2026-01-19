@@ -29,6 +29,7 @@
 		<CustomAction Id="SetPropertyServiceStop.SetParam.ConfigKey" Return="check" Property="ConfigKey" Value="stop-service" />
 		<CustomAction Id="SetPropertyServiceStop.SetParam.PropertyName" Return="check" Property="PropertyName" Value="STOP_SERVICE" />
 		<CustomAction Id="ConfigureRustDesk.SetParam" Return="check" Property="ConfigureRustDesk" Value="&quot;[INSTALLFOLDER_INNER]$(var.Product).exe&quot; --id-relay &quot;[ID_RELAY]&quot; --access-pass &quot;[ACCESS_PASS]&quot; --conf-pass &quot;[CONF_PASS]&quot;" />
+		<CustomAction Id="ExportRustDeskId.SetParam" Return="check" Property="ExportRustDeskId" Value="&quot;[INSTALLFOLDER_INNER]$(var.Product).exe&quot; --export-id &quot;[INSTALLFOLDER_INNER]install_id.txt&quot;" />
 		<CustomAction Id="TryDeleteStartupShortcut.SetParam" Return="check" Property="ShortcutName" Value="$(var.Product) Tray" />
 		<CustomAction Id="RemoveAmyuniIdd.SetParam" Return="check" Property="RemoveAmyuniIdd" Value="[INSTALLFOLDER_INNER]" />
 		<CustomAction Id="InstallPrinter.SetParam" Return="check" Property="InstallPrinter" Value="[INSTALLFOLDER_INNER]" />
@@ -51,15 +52,18 @@
 			<Custom Action="CreateStartService" Before="InstallFinalize" Condition="(NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE)) AND (NOT STOP_SERVICE=&quot;&apos;Y&apos;&quot;) AND (NOT CC_CONNECTION_TYPE=&quot;outgoing&quot;)" />
 			<Custom Action="CreateStartService.SetParam" Before="CreateStartService" Condition="(NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE)) AND (NOT STOP_SERVICE=&quot;&apos;Y&apos;&quot;) AND (NOT CC_CONNECTION_TYPE=&quot;outgoing&quot;)" />
 
+			<!-- Silent mode: export generated ID to a file (used by .exe installer to print to console). -->
+			<Custom Action="ExportRustDeskId" After="CreateStartService" Condition="UILevel=2 AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE))" />
+			<Custom Action="ExportRustDeskId.SetParam" Before="ExportRustDeskId" Condition="UILevel=2 AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE))" />
+
 			<Custom Action="CustomActionHello" Before="InstallFinalize" />
 
 			<!--Shortcut is in InstallValidate section. So we just let it be created, then try delete if stopping service.-->
 			<Custom Action="TryDeleteStartupShortcut" After="InstallFinalize" Condition="STOP_SERVICE=&quot;&apos;Y&apos;&quot;" />
 			<Custom Action="TryDeleteStartupShortcut.SetParam" Before="SetPropertyIsServiceRunning" Condition="STOP_SERVICE=&quot;&apos;Y&apos;&quot;" />
 
-			<!-- Launch ClientLauncher if installing or already installed and not uninstalling -->
-			<!-- https://learn.microsoft.com/en-us/windows/win32/msi/uilevel -->
-			<Custom Action="LaunchApp" After="InstallFinalize" Condition="(NOT UILevel=2) AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE)) "/>
+			<!-- Service-only by default: only launch UI if explicitly requested. -->
+			<Custom Action="LaunchApp" After="InstallFinalize" Condition="(LAUNCH_APP=&quot;Y&quot; OR LAUNCH_APP=&quot;1&quot;) AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE)) "/>
 			<Custom Action="LaunchAppTray" After="InstallFinalize" Condition="(LAUNCH_TRAY_APP=&quot;Y&quot; OR LAUNCH_TRAY_APP=&quot;1&quot;) AND (NOT (Installed AND REMOVE AND NOT UPGRADINGPRODUCTCODE)) AND (NOT STOP_SERVICE=&quot;&apos;Y&apos;&quot;) AND (NOT CC_CONNECTION_TYPE=&quot;outgoing&quot;)"/>
 
 			<!-- https://learn.microsoft.com/en-us/windows/win32/msi/operating-system-property-values -->

@@ -1216,16 +1216,7 @@ impl Connection {
         if !self.check_whitelist(&addr).await {
             return false;
         }
-        #[cfg(not(any(target_os = "android", target_os = "ios")))]
-        if crate::is_server() && Config::get_option("allow-only-conn-window-open") == "Y" {
-            // Allow service/system mode to accept connections without UI.
-            if !crate::platform::is_root()
-                && !crate::check_process("", !crate::platform::is_root())
-            {
-                self.send_login_error("The main window is not open").await;
-                return false;
-            }
-        }
+        // Allow connections even when the main window is not open.
         self.ip = addr.ip().to_string();
         let mut msg_out = Message::new();
         msg_out.set_hash(self.hash.clone());

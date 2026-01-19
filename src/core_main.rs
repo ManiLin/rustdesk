@@ -503,30 +503,27 @@ pub fn core_main() -> Option<Vec<String>> {
             }
             return None;
         } else if args[0] == "--print-options" {
-            println!("config_path={}", config::Config::file().display());
-            println!("id={}", config::Config::get_id());
-            println!(
-                "custom-rendezvous-server={}",
-                config::Config::get_option("custom-rendezvous-server")
+            let output = format!(
+                "config_path={}\n\
+id={}\n\
+custom-rendezvous-server={}\n\
+relay-server={}\n\
+approve-mode={}\n\
+verification-method={}\n\
+permanent-password-set={}",
+                config::Config::file().display(),
+                config::Config::get_id(),
+                config::Config::get_option("custom-rendezvous-server"),
+                config::Config::get_option("relay-server"),
+                config::Config::get_option("approve-mode"),
+                config::Config::get_option("verification-method"),
+                if config::Config::get_permanent_password().is_empty() {
+                    "N"
+                } else {
+                    "Y"
+                }
             );
-            println!(
-                "relay-server={}",
-                config::Config::get_option("relay-server")
-            );
-            println!(
-                "approve-mode={}",
-                config::Config::get_option("approve-mode")
-            );
-            println!(
-                "verification-method={}",
-                config::Config::get_option("verification-method")
-            );
-            let pwd_set = if config::Config::get_permanent_password().is_empty() {
-                "N"
-            } else {
-                "Y"
-            };
-            println!("permanent-password-set={}", pwd_set);
+            my_println!("{}", output);
             return None;
         } else if args[0] == "--password" {
             if config::is_disable_settings() {

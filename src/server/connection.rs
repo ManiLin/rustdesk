@@ -2236,9 +2236,11 @@ impl Connection {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             let is_logon = || crate::platform::is_prelogin();
 
-            if !hbb_common::is_ip_str(&lr.username)
+            let local_id = Config::get_id();
+            if !local_id.is_empty()
+                && !hbb_common::is_ip_str(&lr.username)
                 && !hbb_common::is_domain_port_str(&lr.username)
-                && lr.username != Config::get_id()
+                && lr.username != local_id
             {
                 self.send_login_error(crate::client::LOGIN_MSG_OFFLINE)
                     .await;

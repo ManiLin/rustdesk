@@ -196,6 +196,30 @@ pub trait InvokeUiCM: Send + Clone + 'static + Sized {
     fn file_transfer_log(&self, action: &str, log: &str);
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[derive(Clone, Default)]
+pub struct HeadlessHandler;
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+impl InvokeUiCM for HeadlessHandler {
+    fn add_connection(&self, _client: &Client) {}
+    fn remove_connection(&self, _id: i32, _close: bool) {}
+    fn new_message(&self, _id: i32, _text: String) {}
+    fn change_theme(&self, _dark: String) {}
+    fn change_language(&self) {}
+    fn show_elevation(&self, _show: bool) {}
+    fn update_voice_call_state(&self, _client: &Client) {}
+    fn file_transfer_log(&self, _action: &str, _log: &str) {}
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn start_cm_no_ui() {
+    let cm = ConnectionManager {
+        ui_handler: HeadlessHandler::default(),
+    };
+    start_ipc(cm);
+}
+
 impl<T: InvokeUiCM> Deref for ConnectionManager<T> {
     type Target = T;
 

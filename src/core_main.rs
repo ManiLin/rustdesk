@@ -419,8 +419,10 @@ pub fn core_main() -> Option<Vec<String>> {
                         println!("{err}");
                         return None;
                     }
-                    crate::ipc::set_option("verification-method", "use-permanent-password");
-                    crate::ipc::set_option("approve-mode", "password");
+                crate::ipc::set_option("verification-method", "use-permanent-password");
+                crate::ipc::set_option("approve-mode", "password");
+                // Allow running CM headlessly when using permanent password approval.
+                crate::ipc::set_option("allow-hide-cm", "Y");
                     // Ensure remote clipboard and file transfer are enabled by default.
                     crate::ipc::set_option("enable-clipboard", "Y");
                     crate::ipc::set_option("enable-file-transfer", "Y");
@@ -784,11 +786,13 @@ permanent-password-set={}",
             // meanwhile, return true to call flutter window to show control panel
             crate::ui_interface::start_option_status_sync();
         } else if args[0] == "--cm-no-ui" {
-            #[cfg(feature = "flutter")]
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
                 crate::ui_interface::start_option_status_sync();
+                #[cfg(feature = "flutter")]
                 crate::flutter::connection_manager::start_cm_no_ui();
+                #[cfg(not(feature = "flutter"))]
+                crate::ui_cm_interface::start_cm_no_ui();
             }
             return None;
         } else if args[0] == "--whiteboard" {

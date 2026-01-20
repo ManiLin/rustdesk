@@ -4724,6 +4724,10 @@ async fn start_ipc(
         #[allow(unused_mut)]
         #[allow(unused_assignments)]
         let mut args = vec!["--cm"];
+        #[cfg(windows)]
+        if crate::platform::is_root() && password::hide_cm() {
+            args = vec!["--cm-no-ui"];
+        }
         #[allow(unused_mut)]
         #[cfg(target_os = "linux")]
         let mut user = None;

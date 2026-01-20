@@ -705,7 +705,57 @@ pub async fn get_rendezvous_server(ms_timeout: u64) -> (String, Vec<String>, boo
         a = b.pop().unwrap_or(a);
         false
     };
+    // If websocket is enabled and custom servers use a domain+port,
+    // resolve to IPv4 so WS uses port-based endpoints instead of /ws path.
+    a = resolve_ws_endpoint(&a);
+    b = b.into_iter().map(|x| resolve_ws_endpoint(&x)).collect();
     (a, b, c)
+}
+
+pub fn resolve_ws_endpoint(endpoint: &str) -> String {
+    if !use_ws() || endpoint.is_empty() {
+        return endpoint.to_owned();
+    }
+    if hbb_common::websocket::is_ws_endpoint(endpoint) || hbb_common::is_ip_str(endpoint) {
+        return endpoint.to_owned();
+    }
+    let Some((host, port)) = socket_client::split_host_port(endpoint) else {
+        return endpoint.to_owned();
+    };
+    if !is_custom_ws_host(&host) {
+        return endpoint.to_owned();
+    }
+    let mut addrs = match (host.as_str(), port as u16).to_socket_addrs() {
+        Ok(addrs) => addrs,
+        Err(_) => return endpoint.to_owned(),
+    };
+    if let Some(addr) = addrs.find(|a| a.is_ipv4()) {
+        return format!("{}:{}", addr.ip(), port);
+    }
+    if let Some(addr) = addrs.next() {
+        return format!("{}:{}", addr.ip(), port);
+    }
+    endpoint.to_owned()
+}
+
+fn is_custom_ws_host(host: &str) -> bool {
+    let custom = Config::get_option(keys::OPTION_CUSTOM_RENDEZVOUS_SERVER);
+    if !custom.trim().is_empty() {
+        if let Some((custom_host, _)) = socket_client::split_host_port(&custom) {
+            if custom_host.eq_ignore_ascii_case(host) {
+                return true;
+            }
+        }
+    }
+    let relay = Config::get_option(keys::OPTION_RELAY_SERVER);
+    if !relay.trim().is_empty() {
+        if let Some((relay_host, _)) = socket_client::split_host_port(&relay) {
+            if relay_host.eq_ignore_ascii_case(host) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[inline]

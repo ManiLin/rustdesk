@@ -840,13 +840,14 @@ impl Client {
         token: &str,
         conn_type: ConnType,
     ) -> ResultType<Stream> {
+        let rendezvous_server = crate::common::resolve_ws_endpoint(rendezvous_server);
         let mut succeed = false;
         let mut uuid = "".to_owned();
         let mut ipv4 = true;
 
         for i in 1..=3 {
             // use different socket due to current hbbs implementation requiring different nat address for each attempt
-            let mut socket = connect_tcp(rendezvous_server, CONNECT_TIMEOUT)
+            let mut socket = connect_tcp(&rendezvous_server, CONNECT_TIMEOUT)
                 .await
                 .with_context(|| "Failed to connect to rendezvous server")?;
 
@@ -903,8 +904,9 @@ impl Client {
         conn_type: ConnType,
         ipv4: bool,
     ) -> ResultType<Stream> {
+        let relay_server = crate::common::resolve_ws_endpoint(&relay_server);
         let mut conn = connect_tcp(
-            ipv4_to_ipv6(check_port(relay_server, RELAY_PORT), ipv4),
+            ipv4_to_ipv6(check_port(&relay_server, RELAY_PORT), ipv4),
             CONNECT_TIMEOUT,
         )
         .await

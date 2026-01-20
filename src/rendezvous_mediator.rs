@@ -104,6 +104,7 @@ impl RendezvousMediator {
                 SHOULD_EXIT.store(false, Ordering::SeqCst);
                 MANUAL_RESTARTED.store(false, Ordering::SeqCst);
                 for host in servers.clone() {
+                    let host = crate::common::resolve_ws_endpoint(&host);
                     let server = server.clone();
                     let timeout = timeout.clone();
                     futs.push(tokio::spawn(async move {
@@ -745,7 +746,7 @@ impl RendezvousMediator {
         if relay_server.is_empty() {
             relay_server = crate::increase_port(&self.host, 1);
         }
-        relay_server
+        crate::common::resolve_ws_endpoint(&relay_server)
     }
 }
 

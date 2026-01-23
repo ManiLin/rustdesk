@@ -847,7 +847,7 @@ impl Client {
 
         for i in 1..=3 {
             // use different socket due to current hbbs implementation requiring different nat address for each attempt
-            let mut socket = connect_tcp(&rendezvous_server, CONNECT_TIMEOUT)
+            let mut socket = connect_tcp(rendezvous_server.clone(), CONNECT_TIMEOUT)
                 .await
                 .with_context(|| "Failed to connect to rendezvous server")?;
 

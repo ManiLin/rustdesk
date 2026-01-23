@@ -60,3 +60,4 @@ flutter/web/
 !/res/msi/setup_exe/
 !/res/msi/setup_exe/**
 /res/msi/setup_exe/target/
+cursor_rustdesk.md
